@@ -67,7 +67,7 @@ app.post("/signup/add", function (req, res, next) {
 
     // object of all the users
     console.log(users);
-    if (users) {
+    if (/*!users*/false) {
       res.status(408).send(); // shut down this unused connection!
     } else {
       var newUser = new User();
