@@ -1,11 +1,14 @@
 var express = require("express"); // importing express
 var app = express(); // setting app === express
 var mongoose = require("mongoose");
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 1234;
 const connection = process.env.ATLAS_URI;
 var bodyParser = require("body-parser");
 var MongoClient = require("mongodb").MongoClient;
 var bcrypt = require("bcrypt-nodejs"); // for encrypting the password
+var cors = require('cors')
+
+app.use(cors())
 
 //connecting to the DB
 mongoose.connect(
@@ -56,7 +59,7 @@ app.get("/signup/add", function (req, res, next) {
   });
 });
 
-app.post("signup/add", function (req, res, next) {
+app.post("/signup/add", function (req, res, next) {
   console.log("Request Url:" + req.url);
   console.log(req.body);
   User.findOne({ email: req.body.email }, function (err, users) {
