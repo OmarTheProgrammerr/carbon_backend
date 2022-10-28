@@ -12,7 +12,7 @@ app.use(cors())
 
 //connecting to the DB
 mongoose.connect(
-  "mongodb+srv://GreenMail:carbon_hack22@cluster0.txn0age.mongodb.net/?retryWrites=true&w=majority"
+  connection
 );
 var rez = 0; // so 0 means an error 404 and 1 is working just fine 200
 //creating a Schema
