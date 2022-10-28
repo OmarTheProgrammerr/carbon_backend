@@ -7,13 +7,16 @@ var bodyParser = require("body-parser");
 var MongoClient = require("mongodb").MongoClient;
 var bcrypt = require("bcrypt-nodejs"); // for encrypting the password
 var cors = require('cors')
+var jwt = require('jsonwebtoken');
+var dotenv = require('dotenv');
+
+dotenv.config();
+
 
 app.use(cors())
 
 //connecting to the DB
-mongoose.connect(
-  "mongodb+srv://GreenMail:carbon_hack22@cluster0.txn0age.mongodb.net/?retryWrites=true&w=majority"
-);
+mongoose.connect(process.env.ATLAS_URI);
 var rez = 0; // so 0 means an error 404 and 1 is working just fine 200
 //creating a Schema
 var Schema = mongoose.Schema;
@@ -45,7 +48,7 @@ var User = mongoose.model("Users", usersSchema);
 app.get("/signup/add", function (req, res, next) {
   console.log("Request Url:" + req.url);
 
-  User.findOne({ email: req.query.email }, function (err, users) {
+  User.findOne({ Email: req.query.email }, function (err, users) {
     if (err) console.log(err);
     console.log(users);
     if (users) {
@@ -62,12 +65,12 @@ app.get("/signup/add", function (req, res, next) {
 app.post("/signup/add", function (req, res, next) {
   console.log("Request Url:" + req.url);
   console.log(req.body);
-  User.findOne({ email: req.body.email }, function (err, users) {
-    if (err) console.log(err);
-
-    // object of all the users
-    console.log(users);
-    if (/*!users*/false) {
+  User.findOne({ Email: req.body.Email }, function (err, users) {
+    if (err) {
+      res.json(err);
+    }
+    if (users) {
+      res.status(408).json({ msg: `${req.body.Email} already in database.` });
       res.status(408).send(); // shut down this unused connection!
     } else {
       var newUser = new User();
@@ -84,6 +87,24 @@ app.post("/signup/add", function (req, res, next) {
       });
     }
   });
+});
+
+app.post('/login', (req, res, next) => {
+  User.findOne({ Email: req.body.Email }, (err, user) => {
+    if (err) {
+      res.json(err)
+    }
+    if (user == null) {
+      res.status(404).json({ msg: `${req.body.Email} not found in database.` })
+    } else {
+      let payload = {
+        FullName: user.FullName,
+        OrganizationName: user.OrganizationName,
+        Email: user.Email
+      }
+      res.status(200).json(jwt.sign(payload, process.env.JWT_KEY, { expiresIn: "12 hours" }))
+    }
+  })
 });
 
 app.listen(port, () => {
