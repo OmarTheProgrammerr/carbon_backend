@@ -9,6 +9,7 @@ var bcrypt = require("bcrypt-nodejs"); // for encrypting the password
 var cors = require('cors')
 var jwt = require('jsonwebtoken');
 var dotenv = require('dotenv');
+var crypto = require('crypto');
 
 dotenv.config();
 
@@ -25,6 +26,18 @@ var usersSchema = new Schema({
   OrganizationName: String,
   Email: String,
   Password: String,
+  NewsletterString: String,
+});
+var letterSchema = new Schema({
+    Subject: String,
+    Body: String,
+    SendDate: String,
+    BoundTo: String,
+    MailingListString: String,
+});
+var subscriptionsSchema = new Schema({
+    MailingListString: String,
+    Subscribers: [String]
 });
 
 usersSchema.methods.encryptPassword = (Password) => {
@@ -44,6 +57,8 @@ app.use(bodyParser.json());
 
 //creating a model in mongodb
 var User = mongoose.model("Users", usersSchema);
+var Letter = mongoose.model("Letters", letterSchema);
+var Subscriptions = mongoose.model("Subscriptions", subscriptionsSchema);
 
 app.get("/signup/add", function (req, res, next) {
   console.log("Request Url:" + req.url);
@@ -78,6 +93,7 @@ app.post("/signup/add", function (req, res, next) {
       newUser.OrganizationName = req.body.OrganizationName;
       newUser.Email = req.body.Email;
       newUser.Password = newUser.encryptPassword(req.body.password);
+      newUser.NewsletterString = crypto.randomBytes(8).toString('hex');
 
       newUser.save(function (err) {
         if (err) throw err;
@@ -100,11 +116,50 @@ app.post('/login', (req, res, next) => {
       let payload = {
         FullName: user.FullName,
         OrganizationName: user.OrganizationName,
-        Email: user.Email
+        Email: user.Email,
+        NewsletterString: user.NewsletterString
       }
       res.status(200).json(jwt.sign(payload, process.env.JWT_KEY, { expiresIn: "12 hours" }))
     }
   })
+});
+
+app.post('/saveletter', (req, res, next) => {
+    // Make letter
+    var letter = new Letter();
+    letter.Subject = req.body.Subject;
+    letter.Body = req.body.Body;
+    letter.SendDate = req.body.SendDate;
+    const decodedToken = jwt.decode(req.body.jwt)
+    letter.MailingListString = decodedToken.NewsletterString;
+    letter.BoundTo = decodedToken.Email;
+    letter.save((err) => {
+        if (err) res.json(err);
+        else res.json(letter);
+    })
+});
+
+app.get('/subscribe', (req, res, next) => {
+    Subscriptions.findOne({MailingListString: req.query.MailingListString}, (err, subs) => {
+        if(err) res.json(err);
+        else if(subs == null){
+            // if subscriptions list doesn't exist, make one and add the subscriber
+            var newsubs = new Subscriptions();
+            newsubs.MailingListString = req.query.MailingListString;
+            newsubs.Subscribers.push(req.query.Email);
+            newsubs.save((err) => {
+                if(err) res.json(err);
+                else res.json(subs);
+            });
+        } else {
+            // if subscriptions list does exist, add the subscriber to it
+            subs.Subscribers.push(req.query.Email);
+            subs.save((err) => {
+                if(err) res.json(err);
+                else res.json(subs);
+            });
+        }
+    })
 });
 
 app.listen(port, () => {
