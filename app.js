@@ -10,9 +10,11 @@ var cors = require('cors')
 var jwt = require('jsonwebtoken');
 var dotenv = require('dotenv');
 var crypto = require('crypto');
+var request = require('request');
+var axios = require('axios');
+var AWS = require('aws-sdk');
 
 dotenv.config();
-
 
 app.use(cors())
 
@@ -161,6 +163,40 @@ app.get('/subscribe', (req, res, next) => {
         }
     })
 });
+
+const sendMailFromOptimalLocation = (mailObject) => {
+    request('https://carbon-aware-api.azurewebsites.net/emissions/bylocations/best?location=eastus&location=westus', (error, response, body) => {
+        if (JSON.parse(body)[0].location === 'CAISO_NORTH') {
+            // us-west is best, would send mail through this location
+        } else {
+            // us-east is best, would send mail through this location
+        }
+    })
+    // we only have one AWS account, so I'm just gonna send it through us-east every time.
+
+    AWS.config.update({accessKeyId: process.env.AWS_ACCESS_KEY_ID, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, region:"us-east-2"}) // since we only have one account, we must use us-east-2 for all sending. 
+
+    // TODO: replace subject, body, and recipient data with data from mailObject argument
+
+    let lambda = new AWS.Lambda();
+    let params = {
+        FunctionName: "sendMail",
+        Payload: JSON.stringify({
+            subject: "my loveliest subject",
+            body: "my lovelier body",
+            recipient: "azadeganmalek@gmail.com"
+        })
+    }
+    lambda.invoke(params, (err, data) => {
+        if (err) console.log(err, err.stack)
+        else console.log(data)
+    })
+}
+
+app.get('/test', (req, res, next) => {
+    sendMailFromOptimalLocation()
+    res.json({msg: "done"})
+})
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
