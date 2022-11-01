@@ -1,20 +1,18 @@
 var express = require("express"); // importing express
 var app = express(); // setting app === express
 var mongoose = require("mongoose");
-const port = process.env.PORT || 1234;
-const connection = process.env.ATLAS_URI;
 var bodyParser = require("body-parser");
-var MongoClient = require("mongodb").MongoClient;
 var bcrypt = require("bcrypt-nodejs"); // for encrypting the password
 var cors = require('cors')
 var jwt = require('jsonwebtoken');
 var dotenv = require('dotenv');
 var crypto = require('crypto');
 var request = require('request');
-var axios = require('axios');
 var AWS = require('aws-sdk');
 
 dotenv.config();
+
+const port = process.env.PORT || 8000;
 
 app.use(cors())
 
@@ -164,7 +162,7 @@ app.get('/subscribe', (req, res, next) => {
     })
 });
 
-const sendMailFromOptimalLocation = (mailObject) => {
+const sendMailFromOptimalLocation = (payload) => {
     request('https://carbon-aware-api.azurewebsites.net/emissions/bylocations/best?location=eastus&location=westus', (error, response, body) => {
         if (JSON.parse(body)[0].location === 'CAISO_NORTH') {
             // us-west is best, would send mail through this location
@@ -182,9 +180,9 @@ const sendMailFromOptimalLocation = (mailObject) => {
     let params = {
         FunctionName: "sendMail",
         Payload: JSON.stringify({
-            subject: "my loveliest subject",
-            body: "my lovelier body",
-            recipient: "azadeganmalek@gmail.com"
+            subject: payload.subject,
+            body: payload.body,
+            recipient: payload.recipient
         })
     }
     lambda.invoke(params, (err, data) => {
@@ -194,7 +192,8 @@ const sendMailFromOptimalLocation = (mailObject) => {
 }
 
 app.get('/test', (req, res, next) => {
-    sendMailFromOptimalLocation()
+    // payload is in form {subject: String, body: String, recipient: String(email)}
+    sendMailFromOptimalLocation({subject: "My Subject", body: "The best body", recipient: "azadeganmalek@gmail.com"})
     res.json({msg: "done"})
 })
 
