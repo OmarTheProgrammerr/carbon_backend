@@ -197,6 +197,10 @@ app.get('/test', (req, res, next) => {
     res.json({msg: "done"})
 })
 
+app.get('/ping', (req, res, next) => {
+    res.json({response: "pong"})
+})
+
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
